@@ -1,7 +1,6 @@
 package pl.rosehc.redis;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import pl.rosehc.redis.callback.Callback;
-import pl.rosehc.redis.callback.CallbackBuilder;
 import pl.rosehc.redis.callback.CallbackFactory;
 import pl.rosehc.redis.callback.CallbackFuture;
 import pl.rosehc.redis.callback.CallbackPacket;
@@ -22,7 +20,6 @@ import pl.rosehc.redis.packet.PacketCoderHelper;
 import pl.rosehc.redis.packet.PacketHandler;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
 
 public final class RedisAdapter {
 
@@ -39,37 +36,10 @@ public final class RedisAdapter {
   private final JedisPool pool;
   private final Map<String, RedisPubSubAdapter> adapterMap;
 
-  public RedisAdapter(CallbackFactory callbackFactory, final String host,
-      final int port, final String password) {
+  public RedisAdapter(CallbackFactory callbackFactory, JedisPool pool) {
     this.callbackFactory = callbackFactory;
-    final JedisPoolConfig config = createConnectionPoolConfig();
-    this.pool =
-        !password.isEmpty() && !password.equalsIgnoreCase("none") ? new JedisPool(config, host,
-            port, (int) TimeUnit.SECONDS.toMillis(10L), password)
-            : new JedisPool(config, host, port, (int) TimeUnit.SECONDS.toMillis(10L));
-    for (int tries = 0; tries < config.getMinIdle(); tries++) {
-      try (final Jedis jedis = this.pool.getResource()) {
-        jedis.ping();
-      } catch (Exception e) {
-        this.pool.close();
-        throw new UnsupportedOperationException("Jedis connection is broken! Closing...", e);
-      }
-    }
-
+    this.pool = pool;
     this.adapterMap = new ConcurrentHashMap<>();
-  }
-
-  private static JedisPoolConfig createConnectionPoolConfig() {
-    JedisPoolConfig poolConfig = new JedisPoolConfig();
-    poolConfig.setMinEvictableIdleTime(Duration.ofMinutes(1L));
-    poolConfig.setTimeBetweenEvictionRuns(Duration.ofSeconds(30L));
-    poolConfig.setMaxTotal(500);
-    poolConfig.setMinIdle(128);
-    poolConfig.setNumTestsPerEvictionRun(3);
-    poolConfig.setTestOnBorrow(true);
-    poolConfig.setTestOnReturn(true);
-    poolConfig.setBlockWhenExhausted(true);
-    return poolConfig;
   }
 
   public void disconnect() {
