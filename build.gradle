@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group 'pl.memexurer'
+group 'pl.rosehc'
 version '1.0-SNAPSHOT'
 
 repositories {
