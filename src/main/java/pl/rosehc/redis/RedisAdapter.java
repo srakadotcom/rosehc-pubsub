@@ -20,6 +20,7 @@ import pl.rosehc.redis.packet.PacketCoderHelper;
 import pl.rosehc.redis.packet.PacketHandler;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.Pipeline;
 
 public final class RedisAdapter {
 
@@ -121,10 +122,14 @@ public final class RedisAdapter {
 
   public void sendPacket(final Packet packet, final String... topics) {
     try (final Jedis jedis = this.pool.getResource()) {
+      final Pipeline transaction = jedis.pipelined();
+
       final byte[] data = PacketCoderHelper.writeValue(packet);
       for (final String topic : topics) {
-        jedis.publish(topic.getBytes(StandardCharsets.UTF_8), data);
+        transaction.publish(topic.getBytes(StandardCharsets.UTF_8), data);
       }
+
+      transaction.sync();
     }
   }
 
